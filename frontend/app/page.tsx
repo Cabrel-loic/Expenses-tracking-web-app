@@ -1,9 +1,11 @@
 
 "use client";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import api from "./api";
-import {ArrowDownCircle, ArrowUpCircle, TrendingDown, Activity, TrendingUp, Wallet, Trash, Plus, PlusCircle} from "lucide-react";
+import { useAuth } from "./contexts/AuthContext";
+import {ArrowDownCircle, ArrowUpCircle, TrendingDown, Activity, TrendingUp, Wallet, Trash, Plus, PlusCircle, LogOut, User} from "lucide-react";
 
 type Transaction = {
   id : string;
@@ -18,23 +20,47 @@ export default function Home() {
   const [text, setText] = useState<string>("");
   const [amount, setAmount] = useState<number | "">("");
   const [loading, setLoading] = useState<boolean>(false);
+  const { user, isAuthenticated, logout, loading: authLoading } = useAuth();
+  const router = useRouter();
+
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated) {
+      router.push('/login');
+    }
+  }, [isAuthenticated, authLoading, router]);
 
   
   // fetch Transactions
   const getTransactions = async () => {
+    if (!isAuthenticated) return;
+    
     try {
       const res = await api.get<Transaction[]>("transactions/");
       setTransactions(res.data);
-      toast.success("Transactions fetched successfully")
-    } catch (error) {
-      console.error("Error fetching transactions", error)
-      toast.error("Failed to fetch transactions");
+    } catch (error: any) {
+      console.error("Error fetching transactions", error);
+      console.error("Error response:", error.response?.data);
+      console.error("Error status:", error.response?.status);
+      
+      if (error.response?.status === 401) {
+        toast.error("Session expired. Please login again.");
+        logout();
+        router.push('/login');
+      } else if (error.response?.data) {
+        const errorMsg = error.response.data.detail || error.response.data.message || JSON.stringify(error.response.data);
+        toast.error(`Failed to fetch transactions: ${errorMsg}`);
+      } else {
+        toast.error("Failed to fetch transactions. Please check your connection.");
+      }
     }
   }
 
   useEffect(() => {
-    getTransactions();
-  }, []);
+    if (isAuthenticated) {
+      getTransactions();
+    }
+  }, [isAuthenticated]);
 
 
 // add Transaction
@@ -54,14 +80,28 @@ const addTransaction = async () => {
     setTransactions([res.data, ...transactions]);
 
     const modal = document.getElementById('my_modal_3') as HTMLDialogElement | null;
-    modal?.close();
+    if (modal) {
+      modal.close();
+    }
 
     toast.success("Transaction added successfully");
     setText("");
     setAmount("");
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error adding transaction", error);
-    toast.error("Failed to add transaction");
+    console.error("Error response:", error.response?.data);
+    console.error("Error status:", error.response?.status);
+    
+    if (error.response?.status === 401) {
+      toast.error("Session expired. Please login again.");
+      logout();
+      router.push('/login');
+    } else if (error.response?.data) {
+      const errorMsg = error.response.data.detail || error.response.data.message || JSON.stringify(error.response.data);
+      toast.error(`Failed to add transaction: ${errorMsg}`);
+    } else {
+      toast.error("Failed to add transaction. Please check your connection.");
+    }
   } finally {
     setLoading(false);
   }
@@ -74,9 +114,15 @@ const addTransaction = async () => {
       await api.delete(`transactions/${id}/`);
       setTransactions(transactions.filter(t => t.id !== id));
       toast.success("Transaction deleted successfully")
-    } catch (error) {
-      console.error("Error deleting transaction", error)
-      toast.error("Failed to delete transaction");
+    } catch (error: any) {
+      console.error("Error deleting transaction", error);
+      if (error.response?.status === 401) {
+        toast.error("Session expired. Please login again.");
+        logout();
+        router.push('/login');
+      } else {
+        toast.error("Failed to delete transaction");
+      }
     }
   }
 
@@ -103,8 +149,48 @@ const addTransaction = async () => {
     });
   };
 
+  // Show loading or nothing while checking auth
+  if (authLoading || !isAuthenticated) {
+    return (
+      <div className="flex items-center justify-center">
+        <span className="loading loading-spinner loading-lg"></span>
+      </div>
+    );
+  }
+
+  const handleLogout = () => {
+    logout();
+    router.push('/login');
+  };
+
   return (
    <div className="w-2/3 flex flex-col gap-4">
+    {/* Header with user info and logout */}
+    <div className="flex justify-between items-center mb-4">
+      <div className="flex items-center gap-3">
+        <div className="avatar placeholder">
+          <div className="bg-warning/20 text-warning rounded-full w-12">
+            <User className="w-6 h-6" />
+          </div>
+        </div>
+        <div>
+          <p className="font-semibold">
+            {user?.first_name && user?.last_name 
+              ? `${user.first_name} ${user.last_name}`
+              : user?.username}
+          </p>
+          <p className="text-sm text-base-content/60">{user?.email}</p>
+        </div>
+      </div>
+      <button 
+        className="btn btn-ghost btn-sm"
+        onClick={handleLogout}
+        title="Logout"
+      >
+        <LogOut className="w-4 h-4" />
+        Logout
+      </button>
+    </div>
     <div className="flex justify-between rounded-2xl border-2 border-warning/10 border-dashed bg-warning/5 p-5">
 
 {/* Account balance */}
@@ -164,7 +250,12 @@ const addTransaction = async () => {
     {/* You can open the modal using document.getElementById('ID').showModal() method */}
     <button 
     className="btn btn-warning" 
-    onClick={()=>(document.getElementById('my_modal_3').showModal() as HTMLDialogElement).showModal()}>
+    onClick={() => {
+      const modal = document.getElementById('my_modal_3') as HTMLDialogElement | null;
+      if (modal) {
+        modal.showModal();
+      }
+    }}>
       <PlusCircle className="w-4 h-4"/>
       Add Transaction
     </button>
