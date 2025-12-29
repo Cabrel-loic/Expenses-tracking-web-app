@@ -1,8 +1,17 @@
 from django.contrib import admin
 from django.urls import path
 from . import views
+from rest_framework_simplejwt.views import TokenRefreshView
 
 urlpatterns = [
-    path('transactions/', views.TransactionListCreateView.as_view()),
-    path('transactions/<uuid:id>/', views.TransactionRetrieveUpdateDestroyView.as_view()),
+    # Authentication endpoints
+    path('auth/register/', views.RegisterView.as_view(), name='register'),
+    path('auth/login/', views.CustomTokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('auth/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('auth/me/', views.get_user_profile, name='user_profile'),
+    path('auth/me/update/', views.update_user_profile, name='update_user_profile'),
+    
+    # Transaction endpoints (require authentication)
+    path('transactions/', views.TransactionListCreateView.as_view(), name='transaction_list_create'),
+    path('transactions/<uuid:id>/', views.TransactionRetrieveUpdateDestroyView.as_view(), name='transaction_detail'),
 ]
