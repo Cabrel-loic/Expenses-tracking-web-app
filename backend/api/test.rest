@@ -1,28 +1,62 @@
+### ===== AUTHENTICATION TESTS =====
+
+### Get Access and Refresh Tokens
+POST http://127.0.0.1:8000/api/token/
+Content-Type: application/json
+
+{
+    "username": "admin",
+    "password": "admin123"
+}
+
+###
+### Refresh Access Token
+POST http://127.0.0.1:8000/api/token/refresh/
+Content-Type: application/json
+
+{
+    "refresh": "YOUR_REFRESH_TOKEN_HERE"
+}
+
+###
+### ===== TRANSACTION TESTS WITH AUTHENTICATION =====
+
+### Get All Transactions (Protected - requires Bearer token)
+GET http://127.0.0.1:8000/api/transactions/
+Authorization: Bearer YOUR_ACCESS_TOKEN_HERE
+
+###
+### Create Transaction (Protected - requires Bearer token)
 POST http://127.0.0.1:8000/api/transactions/
 Content-Type: application/json
+Authorization: Bearer YOUR_ACCESS_TOKEN_HERE
 
 {
-    "text": "Descember Salary",
+    "text": "December Salary",
     "amount": 5000.00
 }
-###
-GET http://127.0.0.1:8000/api/transactions/
 
 ###
+### Delete Transaction (Protected)
 DELETE http://127.0.0.1:8000/api/transactions/502f524a-3b60-47ac-9351-5ea77a70800f/
+Authorization: Bearer YOUR_ACCESS_TOKEN_HERE
 
 ###
+### Update Transaction (PUT - Protected)
 PUT http://127.0.0.1:8000/api/transactions/de2c7a82-90c1-42bf-aae1-a16a50e8a8bf/
 Content-Type: application/json
+Authorization: Bearer YOUR_ACCESS_TOKEN_HERE
 
 {
-    "text": "September Salaire",
+    "text": "September Salary",
     "amount": 500.00
 }
 
 ###
+### Partial Update Transaction (PATCH - Protected)
 PATCH http://127.0.0.1:8000/api/transactions/de2c7a82-90c1-42bf-aae1-a16a50e8a8bf/
 Content-Type: application/json
+Authorization: Bearer YOUR_ACCESS_TOKEN_HERE
 
 {
     "text": "September Salary",
