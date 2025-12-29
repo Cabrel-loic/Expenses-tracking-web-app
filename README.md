@@ -16,7 +16,8 @@ This application provides a comprehensive solution for personal finance manageme
 - **Framework**: Django 6.0
 - **API**: Django REST Framework
 - **Database**: SQLite (development)
-- **Authentication**: Django Auth (ready for implementation)
+- **Authentication**: JWT (JSON Web Tokens) with djangorestframework-simplejwt
+- **CORS**: django-cors-headers for cross-origin requests
 
 ### Frontend
 - **Framework**: Next.js 16.0.8 (App Router)
@@ -31,19 +32,30 @@ This application provides a comprehensive solution for personal finance manageme
 
 FULL STACK EXPENSE/
 ├── backend/
-│   ├── api/              # Main application
-│   │   ├── models.py     # Transaction model
-│   │   ├── views.py      # API views
-│   │   ├── serializer.py # DRF serializers
-│   │   └── urls.py       # API routes
-│   ├── backend/          # Django project settings
+│   ├── api/                      # Main application
+│   │   ├── models.py            # Transaction model with user
+│   │   ├── views.py             # API views (auth + transactions)
+│   │   ├── serializers.py       # DRF serializers (auth + transactions)
+│   │   ├── urls.py              # API routes
+│   │   ├── admin.py             # Django admin configuration
+│   │   └── management/commands/ # Custom management commands
+│   ├── backend/                 # Django project settings
+│   │   └── settings.py          # JWT & CORS configuration
+│   ├── requirements.txt         # Python dependencies
 │   └── manage.py
 ├── frontend/
 │   ├── app/
-│   │   ├── page.tsx      # Main expense tracker UI
-│   │   ├── api.ts        # API client configuration
-│   │   └── layout.tsx    # Root layout
-│   └── package.json
+│   │   ├── contexts/
+│   │   │   └── AuthContext.tsx  # Authentication context
+│   │   ├── login/
+│   │   │   └── page.tsx         # Login page
+│   │   ├── register/
+│   │   │   └── page.tsx         # Registration page
+│   │   ├── page.tsx             # Protected home page
+│   │   ├── api.ts               # API client with JWT interceptors
+│   │   └── layout.tsx          # Root layout with AuthProvider
+│   ├── package.json
+│   └── .env.local               # Environment variables
 └── README.md
 
 
@@ -53,6 +65,16 @@ FULL STACK EXPENSE/
 - Python 3.8+
 - Node.js 18+
 - npm or yarn
+
+### Quick Start
+
+1. **Clone the repository** (if applicable)
+2. **Backend Setup** (see detailed steps below)
+3. **Frontend Setup** (see detailed steps below)
+4. **Register a new account** at `http://localhost:3000/register`
+5. **Login** and start tracking your expenses!
+
+> **Note**: Make sure both backend and frontend servers are running simultaneously.
 
 ### Backend Setup
 
@@ -74,15 +96,24 @@ source venv/bin/activate
 
 3. Install dependencies:
 
-pip install django djangorestframework django-cors-headers
+pip install -r requirements.txt
+
+Or manually:
+pip install django djangorestframework django-cors-headers djangorestframework-simplejwt
 
 
 4. Run migrations:
 
+python manage.py makemigrations
 python manage.py migrate
 
 
-5. Start the development server:
+5. (Optional) Create a superuser for admin access:
+
+python manage.py createsuperuser
+
+
+6. Start the development server:
 
 python manage.py runserver
 
@@ -113,12 +144,74 @@ npm run dev
 
 The application will be available at `http://localhost:3000`
 
+## 🔐 Authentication
+
+This application uses **JWT (JSON Web Tokens)** for secure authentication. All transaction endpoints require authentication, and users can only access their own data.
+
+### Authentication Flow
+
+1. **Registration**: Users create an account at `/register`
+   - Username, email, and password required
+   - Optional first and last name
+   - Password validation enforced
+
+2. **Login**: Users authenticate at `/login`
+   - Receives access token (60 min) and refresh token (7 days)
+   - Tokens stored securely in browser localStorage
+   - Automatic token refresh on expiration
+
+3. **Protected Routes**: 
+   - Home page (`/`) requires authentication
+   - Unauthenticated users redirected to login
+   - All API endpoints require valid JWT token
+
+4. **Logout**: Clears tokens and redirects to login
+
+### API Endpoints
+
+#### Authentication Endpoints
+- `POST /api/auth/register/` - Register new user
+- `POST /api/auth/login/` - Login and get JWT tokens
+- `POST /api/auth/token/refresh/` - Refresh access token
+- `GET /api/auth/me/` - Get current user profile
+- `PUT/PATCH /api/auth/me/update/` - Update user profile
+
+#### Protected Transaction Endpoints
+- `GET /api/transactions/` - List user's transactions (requires auth)
+- `POST /api/transactions/` - Create transaction (requires auth)
+- `GET /api/transactions/<id>/` - Get transaction (requires auth)
+- `PUT /api/transactions/<id>/` - Update transaction (requires auth)
+- `DELETE /api/transactions/<id>/` - Delete transaction (requires auth)
+
+### Security Features
+
+- ✅ JWT token-based authentication
+- ✅ Automatic token refresh
+- ✅ Password validation
+- ✅ User data isolation (users only see their own transactions)
+- ✅ Secure token storage
+- ✅ CORS protection
+- ✅ Protected API endpoints
+
+For detailed authentication setup and API documentation, see:
+- `backend/AUTH_SETUP.md` - Backend authentication guide
+- `frontend/AUTH_GUIDE.md` - Frontend authentication guide
+
 ## 📊 Current Features
+
+✅ **Authentication System**
+- User registration with validation
+- Secure JWT-based login
+- Automatic token refresh
+- Protected routes and API endpoints
+- User profile management
+- Secure logout functionality
 
 ✅ **Transaction Management**
 - Add new transactions (income/expenses)
 - Delete transactions
 - View transaction history
+- User-specific transactions (each user sees only their own data)
 
 ✅ **Financial Overview**
 - Current balance calculation
@@ -131,6 +224,8 @@ The application will be available at `http://localhost:3000`
 - Dark theme (night mode)
 - Real-time updates
 - Toast notifications for user feedback
+- User profile display
+- Intuitive login/register pages
 
 ## 🔍 Competitive Analysis: Top Expense Tracking Applications
 
@@ -238,22 +333,22 @@ The application will be available at `http://localhost:3000`
 
 **Estimated Time:** 4-6 hours
 
-#### 2. **User Authentication & Multi-User Support**
+#### 2. **User Authentication & Multi-User Support** ✅ **COMPLETED**
 **Why:** Currently all transactions are shared. Users need personal accounts.
 
 **Implementation:**
-- **Backend:**
-  - Enable Django authentication
-  - Add user foreign key to Transaction model
-  - Implement JWT or session-based authentication
-  - Add user registration/login endpoints
-- **Frontend:**
-  - Create login/register pages
-  - Implement protected routes
-  - Add user profile management
-  - Store auth tokens securely
+- **Backend:** ✅
+  - Django authentication enabled
+  - User foreign key added to Transaction model
+  - JWT authentication implemented with djangorestframework-simplejwt
+  - User registration/login endpoints created
+- **Frontend:** ✅
+  - Login/register pages created
+  - Protected routes implemented
+  - User profile management added
+  - Auth tokens stored securely in localStorage
 
-**Estimated Time:** 8-12 hours
+**Status:** Fully implemented and working
 
 #### 3. **Transaction Types (Income/Expense)**
 **Why:** Currently relies on negative numbers. Explicit types are clearer.
@@ -505,7 +600,7 @@ The application will be available at `http://localhost:3000`
 ## 📋 Implementation Roadmap
 
 ### Week 1-2: Foundation
-1. User authentication
+1. ✅ User authentication (COMPLETED)
 2. Transaction types
 3. Categories
 
@@ -567,7 +662,10 @@ The application will be available at `http://localhost:3000`
 
 ## 📝 Environment Variables
 
-### Backend (.env)
+### Backend
+
+For development, the default settings work out of the box. For production, create a `.env` file:
+
 ```env
 SECRET_KEY=your-secret-key-here
 DEBUG=False
@@ -576,10 +674,24 @@ DATABASE_URL=postgresql://user:password@localhost/dbname
 CORS_ALLOWED_ORIGINS=https://yourdomain.com
 ```
 
-### Frontend (.env.local)
+**JWT Configuration** (already set in `settings.py`):
+- Access token lifetime: 60 minutes
+- Refresh token lifetime: 7 days
+- Token rotation: Enabled
+
+### Frontend
+
+Create a `.env.local` file in the `frontend` directory:
+
+```env
+NEXT_PUBLIC_API_URL=http://localhost:8000/
+```
+
+For production:
 ```env
 NEXT_PUBLIC_API_URL=https://api.yourdomain.com/
 ```
+
 
 ## 🤝 Contributing
 
@@ -598,12 +710,21 @@ This project is open source and available under the [MIT License](LICENSE).
 - Inspired by applications like Mint, YNAB, and PocketGuard
 - Built with Django and Next.js
 - UI components from DaisyUI
+- JWT authentication powered by djangorestframework-simplejwt
+- Icons provided by Lucide React
+
+## 📚 Additional Documentation
+
+- **Backend Authentication**: See `backend/AUTH_SETUP.md` for detailed API documentation
+- **Frontend Authentication**: See `frontend/AUTH_GUIDE.md` for frontend implementation details
+- **Migration Guide**: See `backend/MIGRATION_GUIDE.md` for database migration instructions
+- **Troubleshooting**: See `backend/FIX_TRANSACTION_ISSUES.md` for common issues and solutions
 
 ## 📧 Contact
 
-For questions, suggestions, or contributions, please open an issue or contact the maintainers.
+For questions, suggestions, or contributions, please open an issue or contact me at kemloungloiccabrel@gmail.com or whatsapp at +237674658654.
 
----
+
 
 **Note:** This README is a living document. Update it as the project evolves and new features are added.
 
