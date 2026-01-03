@@ -2,6 +2,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from 'next/link';
 import toast from "react-hot-toast";
 import api from "./api";
 import { useAuth } from "./contexts/AuthContext";
@@ -168,11 +169,11 @@ const addTransaction = async () => {
     {/* Header with user info and logout */}
     <div className="flex justify-between items-center mb-4">
       <div className="flex items-center gap-3">
-        <div className="avatar placeholder">
+        <Link href="/profile" className="avatar placeholder" aria-label="View profile">
           <div className="bg-warning/20 text-warning rounded-full w-12 flex items-center justify-center">
             <User className="w-6 h-6" />
           </div>
-        </div>
+        </Link>
         <div>
           <p className="font-semibold">
             {user?.first_name && user?.last_name 

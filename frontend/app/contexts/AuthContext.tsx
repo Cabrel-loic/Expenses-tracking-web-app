@@ -19,6 +19,7 @@ interface AuthContextType {
   register: (username: string, email: string, password: string, password2: string, firstName?: string, lastName?: string) => Promise<boolean>;
   logout: () => void;
   isAuthenticated: boolean;
+  updateUser?: (updates: Partial<User>) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -130,6 +131,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     toast.success('Logged out successfully');
   };
 
+  const updateUser = (updates: Partial<User>) => {
+    setUser((prev) => {
+      const updated = prev ? { ...prev, ...updates } : (updates as User);
+      try {
+        localStorage.setItem('user', JSON.stringify(updated));
+      } catch (e) {
+        console.error('Failed to save updated user to localStorage', e);
+      }
+      return updated;
+    });
+  };
+
   const value: AuthContextType = {
     user,
     loading,
@@ -137,6 +150,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     register,
     logout,
     isAuthenticated: !!user,
+    updateUser,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
