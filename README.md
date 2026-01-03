@@ -15,7 +15,7 @@ This application provides a comprehensive solution for personal finance manageme
 ### Backend
 - **Framework**: Django 6.0
 - **API**: Django REST Framework
-- **Database**: SQLite (development)
+- **Database**: Postgresql
 - **Authentication**: JWT (JSON Web Tokens) with djangorestframework-simplejwt
 - **CORS**: django-cors-headers for cross-origin requests
 
@@ -26,37 +26,6 @@ This application provides a comprehensive solution for personal finance manageme
 - **HTTP Client**: Axios
 - **Notifications**: React Hot Toast
 - **Icons**: Lucide React
-
-## 📁 Project Structure
-
-
-FULL STACK EXPENSE/
-├── backend/
-│   ├── api/                      # Main application
-│   │   ├── models.py            # Transaction model with user
-│   │   ├── views.py             # API views (auth + transactions)
-│   │   ├── serializers.py       # DRF serializers (auth + transactions)
-│   │   ├── urls.py              # API routes
-│   │   ├── admin.py             # Django admin configuration
-│   │   └── management/commands/ # Custom management commands
-│   ├── backend/                 # Django project settings
-│   │   └── settings.py          # JWT & CORS configuration
-│   ├── requirements.txt         # Python dependencies
-│   └── manage.py
-├── frontend/
-│   ├── app/
-│   │   ├── contexts/
-│   │   │   └── AuthContext.tsx  # Authentication context
-│   │   ├── login/
-│   │   │   └── page.tsx         # Login page
-│   │   ├── register/
-│   │   │   └── page.tsx         # Registration page
-│   │   ├── page.tsx             # Protected home page
-│   │   ├── api.ts               # API client with JWT interceptors
-│   │   └── layout.tsx          # Root layout with AuthProvider
-│   ├── package.json
-│   └── .env.local               # Environment variables
-└── README.md
 
 
 ## 🚀 Getting Started
@@ -97,9 +66,6 @@ source venv/bin/activate
 3. Install dependencies:
 
 pip install -r requirements.txt
-
-Or manually:
-pip install django djangorestframework django-cors-headers djangorestframework-simplejwt
 
 
 4. Run migrations:
@@ -207,25 +173,11 @@ For detailed authentication setup and API documentation, see:
 - User profile management
 - Secure logout functionality
 
-✅ **Transaction Management**
-- Add new transactions (income/expenses)
-- Delete transactions
-- View transaction history
-- User-specific transactions (each user sees only their own data)
-
 ✅ **Financial Overview**
 - Current balance calculation
 - Total income tracking
 - Total expenses tracking
 - Expense-to-revenue ratio visualization
-
-✅ **User Interface**
-- Modern, responsive design with DaisyUI
-- Dark theme (night mode)
-- Real-time updates
-- Toast notifications for user feedback
-- User profile display
-- Intuitive login/register pages
 
 ## 🔍 Competitive Analysis: Top Expense Tracking Applications
 

@@ -62,7 +62,7 @@ export default function RegisterPage() {
         <div className="card-body">
           <div className="flex flex-col items-center mb-6">
             <div className="avatar placeholder mb-4">
-              <div className="bg-warning/20 text-warning rounded-full w-20">
+              <div className="bg-warning/20 text-warning rounded-full w-20 flex items-center justify-center">
                 <UserPlus className="w-10 h-10" />
               </div>
             </div>
