@@ -1,0 +1,3 @@
+reset you workspace with you latest commit that is remove everything you worked locally after that commit
+
+git reset --hard HEAD
