@@ -1,5 +1,12 @@
 from django.contrib import admin
-from .models import Transaction, Category
+from .models import Transaction, Category, UserProfile
+
+
+@admin.register(UserProfile)
+class UserProfileAdmin(admin.ModelAdmin):
+    list_display = ['user', 'avatar']
+    search_fields = ['user__username']
+    raw_id_fields = ['user']
 
 
 @admin.register(Category)

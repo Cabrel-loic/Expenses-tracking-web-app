@@ -232,8 +232,13 @@ export default function ProfilePage() {
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               <div className="avatar placeholder">
-                <div className="bg-warning/20 text-warning rounded-full w-16 h-16 flex items-center justify-center">
-                  <User className="w-8 h-8" />
+                <div className="bg-warning/20 text-warning rounded-full w-16 h-16 flex items-center justify-center overflow-hidden">
+                  {user?.avatar ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={user.avatar} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    <User className="w-8 h-8" />
+                  )}
                 </div>
               </div>
               <div>

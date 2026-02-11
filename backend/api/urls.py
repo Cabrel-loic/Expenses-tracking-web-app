@@ -11,6 +11,7 @@ urlpatterns = [
     path('auth/me/', views.get_user_profile, name='user_profile'),
     path('auth/me/update/', views.update_user_profile, name='update_user_profile'),
     path('auth/me/password/', views.change_password, name='change_password'),
+    path('auth/me/avatar/', views.avatar, name='avatar'),
     
     # Category endpoints (require authentication)
     path('categories/', views.CategoryListCreateView.as_view(), name='category_list_create'),

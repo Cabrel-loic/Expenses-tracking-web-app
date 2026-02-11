@@ -6,11 +6,25 @@ from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 
 class UserSerializer(serializers.ModelSerializer):
-    """Serializer for user profile information"""
+    """Serializer for user profile information (includes avatar URL from UserProfile)."""
+    avatar = serializers.SerializerMethodField()
+
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'date_joined']
-        read_only_fields = ['id', 'date_joined']
+        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'date_joined', 'avatar']
+        read_only_fields = ['id', 'date_joined', 'avatar']
+
+    def get_avatar(self, obj):
+        request = self.context.get('request')
+        if not request:
+            return None
+        try:
+            profile = obj.profile
+        except Exception:
+            return None
+        if not profile or not profile.avatar:
+            return None
+        return request.build_absolute_uri(profile.avatar.url)
 
 
 class RegisterSerializer(serializers.ModelSerializer):
@@ -51,16 +65,10 @@ class RegisterSerializer(serializers.ModelSerializer):
 
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
-    """Custom JWT token serializer that includes user data"""
+    """Custom JWT token serializer that includes full user data (including avatar URL)."""
     def validate(self, attrs):
         data = super().validate(attrs)
-        data['user'] = {
-            'id': self.user.id,
-            'username': self.user.username,
-            'email': self.user.email,
-            'first_name': self.user.first_name,
-            'last_name': self.user.last_name,
-        }
+        data['user'] = UserSerializer(self.user, context=self.context).data
         return data
 
 

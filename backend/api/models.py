@@ -1,9 +1,40 @@
 import uuid
+import os
 from datetime import datetime
 from django.db import models
 from django.contrib.auth.models import User
 from django.core.validators import MinLengthValidator, MaxLengthValidator
 from django.utils import timezone
+
+
+def user_avatar_upload_to(instance, filename):
+    """Store avatars as avatars/<user_id>/<uuid>.<ext> for uniqueness and cleanup."""
+    ext = os.path.splitext(filename)[1].lower() or ".jpg"
+    if ext not in (".jpg", ".jpeg", ".png", ".webp"):
+        ext = ".jpg"
+    return f"avatars/{instance.user_id}/{uuid.uuid4()}{ext}"
+
+
+class UserProfile(models.Model):
+    """Extended profile for user (avatar, etc.). One-to-one with User."""
+    user = models.OneToOneField(
+        User,
+        on_delete=models.CASCADE,
+        related_name="profile",
+    )
+    avatar = models.ImageField(
+        upload_to=user_avatar_upload_to,
+        null=True,
+        blank=True,
+        max_length=255,
+        help_text="Profile picture. Recommended: square, at least 256×256.",
+    )
+
+    class Meta:
+        db_table = "api_userprofile"
+
+    def __str__(self):
+        return f"Profile of {self.user.username}"
 
 
 class Category(models.Model):

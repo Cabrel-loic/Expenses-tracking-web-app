@@ -8,7 +8,7 @@ from django.db.models.functions import TruncMonth
 from django.utils import timezone
 from datetime import datetime, timedelta
 from collections import defaultdict
-from .models import Transaction, Category
+from .models import Transaction, Category, UserProfile
 from .serializers import (
     TransactionSerializer, 
     CustomTokenObtainPairSerializer,
@@ -44,19 +44,22 @@ class CustomTokenObtainPairView(TokenObtainPairView):
 @api_view(['GET'])
 @permission_classes([permissions.IsAuthenticated])
 def get_user_profile(request):
-    """Get current user profile"""
-    serializer = UserSerializer(request.user)
+    """Get current user profile (includes avatar URL)."""
+    UserProfile.objects.get_or_create(user=request.user)
+    user = User.objects.select_related('profile').get(pk=request.user.pk)
+    serializer = UserSerializer(user, context={'request': request})
     return Response(serializer.data)
 
 
 @api_view(['PUT', 'PATCH'])
 @permission_classes([permissions.IsAuthenticated])
 def update_user_profile(request):
-    """Update current user profile"""
+    """Update current user profile (text fields only; use avatar endpoint for picture)."""
     serializer = UserSerializer(request.user, data=request.data, partial=True)
     if serializer.is_valid():
         serializer.save()
-        return Response(serializer.data)
+        user = User.objects.select_related('profile').get(pk=request.user.pk)
+        return Response(UserSerializer(user, context={'request': request}).data)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -84,6 +87,69 @@ def change_password(request):
     request.user.set_password(new_password)
     request.user.save()
     return Response({'message': 'Password updated successfully.'})
+
+
+# Max avatar size 5MB; max dimension 512
+AVATAR_MAX_SIZE_BYTES = 5 * 1024 * 1024
+AVATAR_MAX_DIMENSION = 512
+ALLOWED_IMAGE_CONTENT_TYPES = {'image/jpeg', 'image/png', 'image/webp'}
+
+
+@api_view(['POST', 'DELETE'])
+@permission_classes([permissions.IsAuthenticated])
+def avatar(request):
+    """POST: upload/replace profile picture (multipart key 'avatar'). DELETE: remove picture."""
+    if request.method == 'DELETE':
+        profile, _ = UserProfile.objects.get_or_create(user=request.user)
+        if profile.avatar:
+            profile.avatar.delete(save=False)
+            profile.avatar = None
+            profile.save()
+        user = User.objects.select_related('profile').get(pk=request.user.pk)
+        return Response(UserSerializer(user, context={'request': request}).data)
+
+    from PIL import Image
+    from io import BytesIO
+    from django.core.files.base import ContentFile
+
+    avatar_file = request.FILES.get('avatar')
+    if not avatar_file:
+        return Response({'avatar': ['No file provided. Use form key "avatar".']}, status=status.HTTP_400_BAD_REQUEST)
+    if avatar_file.size > AVATAR_MAX_SIZE_BYTES:
+        return Response(
+            {'avatar': [f'File too large. Maximum size is {AVATAR_MAX_SIZE_BYTES // (1024*1024)} MB.']},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    content_type = getattr(avatar_file, 'content_type', '') or ''
+    if content_type not in ALLOWED_IMAGE_CONTENT_TYPES:
+        return Response(
+            {'avatar': ['Invalid image type. Use JPEG, PNG, or WebP.']},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    try:
+        img = Image.open(avatar_file)
+        img.load()
+    except Exception:
+        return Response({'avatar': ['Invalid or corrupted image.']}, status=status.HTTP_400_BAD_REQUEST)
+
+    if img.mode in ('RGBA', 'P'):
+        img = img.convert('RGB')
+    w, h = img.size
+    if w > AVATAR_MAX_DIMENSION or h > AVATAR_MAX_DIMENSION:
+        img.thumbnail((AVATAR_MAX_DIMENSION, AVATAR_MAX_DIMENSION), Image.Resampling.LANCZOS)
+
+    buffer = BytesIO()
+    img.save(buffer, format='JPEG', quality=88, optimize=True)
+    buffer.seek(0)
+
+    profile, _ = UserProfile.objects.get_or_create(user=request.user)
+    if profile.avatar:
+        profile.avatar.delete(save=False)
+    profile.avatar.save(f'avatar_{request.user.id}.jpg', ContentFile(buffer.read()), save=True)
+
+    user = User.objects.select_related('profile').get(pk=request.user.pk)
+    return Response(UserSerializer(user, context={'request': request}).data)
 
 
 # ==================== Category Views ====================

@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { useAuth } from "../../contexts/AuthContext";
 import api from "../../api";
 import toast from "react-hot-toast";
@@ -19,7 +20,12 @@ import {
   Calendar,
   CheckCircle2,
   AlertCircle,
+  Camera,
+  X,
 } from "lucide-react";
+
+const AVATAR_MAX_SIZE_MB = 5;
+const AVATAR_ACCEPT = "image/jpeg,image/png,image/webp";
 
 type ProfileForm = {
   first_name: string;
@@ -89,10 +95,14 @@ export default function EditProfilePage() {
   const [showPasswords, setShowPasswords] = useState({ current: false, new: false, confirm: false });
   const [profileFetched, setProfileFetched] = useState(false);
   const [dateJoined, setDateJoined] = useState<string | null>(null);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [viewAvatarOpen, setViewAvatarOpen] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const viewAvatarDialogRef = useRef<HTMLDialogElement>(null);
 
   const fetchProfile = useCallback(async () => {
     try {
-      const res = await api.get<ProfileForm & { id: number; date_joined?: string }>("auth/me/");
+      const res = await api.get<ProfileForm & { id: number; date_joined?: string; avatar?: string | null }>("auth/me/");
       const data = res.data;
       setProfile({
         first_name: data.first_name ?? "",
@@ -101,6 +111,7 @@ export default function EditProfilePage() {
         username: data.username ?? "",
       });
       if (data.date_joined) setDateJoined(data.date_joined);
+      updateUser?.({ avatar: data.avatar ?? null });
     } catch (err) {
       console.error("Fetch profile error", err);
       if (user) {
@@ -114,7 +125,7 @@ export default function EditProfilePage() {
     } finally {
       setProfileFetched(true);
     }
-  }, [user]);
+  }, [user, updateUser]);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -123,6 +134,11 @@ export default function EditProfilePage() {
     }
     if (isAuthenticated && !profileFetched) fetchProfile();
   }, [authLoading, isAuthenticated, router, profileFetched, fetchProfile]);
+
+  useEffect(() => {
+    if (viewAvatarOpen) viewAvatarDialogRef.current?.showModal();
+    else viewAvatarDialogRef.current?.close();
+  }, [viewAvatarOpen]);
 
   const handleProfileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -217,6 +233,34 @@ export default function EditProfilePage() {
     setShowPasswords((prev) => ({ ...prev, [field]: !prev[field] }));
   };
 
+  const handleAvatarFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    if (file.size > AVATAR_MAX_SIZE_MB * 1024 * 1024) {
+      toast.error(`Image must be under ${AVATAR_MAX_SIZE_MB} MB`);
+      return;
+    }
+    if (!AVATAR_ACCEPT.split(",").some((t) => file.type === t.trim())) {
+      toast.error("Use JPEG, PNG, or WebP");
+      return;
+    }
+    setUploadingAvatar(true);
+    try {
+      const formData = new FormData();
+      formData.append("avatar", file);
+      const res = await api.post<{ avatar?: string | null } & ProfileForm>("auth/me/avatar/", formData);
+      updateUser?.({ avatar: res.data.avatar ?? null });
+      toast.success("Profile picture updated");
+    } catch (err: unknown) {
+      const data = (err as { response?: { data?: { avatar?: string[] } } })?.response?.data;
+      const msg = data?.avatar?.[0] ?? "Failed to upload. Try again.";
+      toast.error(msg);
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
+
   if (authLoading || !isAuthenticated) {
     return (
       <div className="flex justify-center items-center min-h-[50vh]">
@@ -241,20 +285,95 @@ export default function EditProfilePage() {
         </Link>
       </div>
 
-      {/* Header card with avatar */}
+      {/* Facebook-style header: big avatar (click to view) + small camera (click to update) + name */}
       <div className="card bg-base-200/50 border border-base-300 shadow-xl mb-6">
-        <div className="card-body flex-row items-center gap-4">
-          <div className="avatar placeholder">
-            <div className="bg-warning/20 text-warning rounded-full w-20 h-20 flex items-center justify-center text-2xl font-bold">
-              {initial}
+        <div className="card-body">
+          <div className="flex flex-wrap items-center gap-6">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept={AVATAR_ACCEPT}
+              className="hidden"
+              onChange={handleAvatarFileChange}
+            />
+            {/* Left: large profile picture circle — click to view */}
+            <div className="relative shrink-0">
+              <button
+                type="button"
+                onClick={() => user?.avatar && setViewAvatarOpen(true)}
+                className={`relative block rounded-full w-32 h-32 overflow-hidden bg-warning/20 flex items-center justify-center ring-2 ring-base-300 focus:outline-none focus:ring-2 focus:ring-warning ${user?.avatar ? "cursor-pointer hover:ring-warning/50 transition-shadow" : "cursor-default"}`}
+                aria-label={user?.avatar ? "View profile picture" : "No profile picture"}
+              >
+                {user?.avatar ? (
+                  <Image
+                    src={user.avatar}
+                    alt="Profile"
+                    fill
+                    className="object-cover"
+                    sizes="128px"
+                    unoptimized={user.avatar.startsWith("http://localhost") || user.avatar.startsWith("http://127.0.0.1")}
+                  />
+                ) : (
+                  <span className="text-4xl font-bold text-warning">{initial}</span>
+                )}
+                {uploadingAvatar && (
+                  <div className="absolute inset-0 bg-base-content/50 flex items-center justify-center">
+                    <span className="loading loading-spinner loading-lg text-warning" />
+                  </div>
+                )}
+              </button>
+              {/* Small camera circle — click to update profile picture */}
+              <button
+                type="button"
+                onClick={() => !uploadingAvatar && fileInputRef.current?.click()}
+                disabled={uploadingAvatar}
+                className="absolute -bottom-1 -right-1 w-10 h-10 rounded-full bg-base-300 border-2 border-base-200 shadow flex items-center justify-center hover:bg-warning hover:text-warning-content focus:outline-none focus:ring-2 focus:ring-warning disabled:opacity-50 transition-colors"
+                aria-label="Update profile picture"
+              >
+                <Camera className="w-5 h-5" />
+              </button>
             </div>
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold">{displayName}</h1>
-            <p className="text-sm text-base-content/60">Update your account details below</p>
+            {/* Name: first + last, prominent */}
+            <div className="min-w-0">
+              <h1 className="text-2xl sm:text-3xl font-bold truncate">
+                {displayName}
+              </h1>
+              <p className="text-sm text-base-content/60 mt-1">Edit your personal information and security settings</p>
+            </div>
           </div>
         </div>
       </div>
+
+      {/* Modal: view profile picture full size */}
+      <dialog ref={viewAvatarDialogRef} className="modal modal-bottom sm:modal-middle" onClose={() => setViewAvatarOpen(false)}>
+        <div className="modal-box relative p-0 overflow-hidden bg-transparent shadow-none max-w-none w-auto max-h-[90vh] flex items-center justify-center">
+          {user?.avatar && (
+            <>
+              <div className="relative w-full h-full min-w-[200px] min-h-[200px] max-w-[90vw] max-h-[85vh] rounded-lg overflow-hidden bg-base-300">
+                <Image
+                  src={user.avatar}
+                  alt="Profile picture"
+                  fill
+                  className="object-contain"
+                  sizes="(max-width: 90vw) 90vw, 512px"
+                  unoptimized={user.avatar.startsWith("http://localhost") || user.avatar.startsWith("http://127.0.0.1")}
+                />
+              </div>
+              <button
+                type="button"
+                onClick={() => setViewAvatarOpen(false)}
+                className="btn btn-circle btn-sm absolute right-2 top-2 z-10 bg-black/50 text-white hover:bg-black/70 border-0"
+                aria-label="Close"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </>
+          )}
+        </div>
+        <form method="dialog" className="modal-backdrop bg-black/70" onClick={() => setViewAvatarOpen(false)}>
+          <button type="button" className="cursor-default" aria-label="Close">close</button>
+        </form>
+      </dialog>
 
       {/* Personal information */}
       <div className="card bg-base-200/50 border border-base-300 shadow-xl mb-6">

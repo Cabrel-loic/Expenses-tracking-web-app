@@ -5,9 +5,16 @@ import logging
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.contrib.auth.models import User
-from .models import Category
+from .models import Category, UserProfile
 
 logger = logging.getLogger(__name__)
+
+
+@receiver(post_save, sender=User)
+def ensure_user_profile(sender, instance, created, **kwargs):
+    """Ensure every user has a UserProfile (for avatar, etc.)."""
+    if created:
+        UserProfile.objects.get_or_create(user=instance)
 
 
 @receiver(post_save, sender=User)
