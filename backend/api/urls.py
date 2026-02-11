@@ -10,6 +10,7 @@ urlpatterns = [
     path('auth/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('auth/me/', views.get_user_profile, name='user_profile'),
     path('auth/me/update/', views.update_user_profile, name='update_user_profile'),
+    path('auth/me/password/', views.change_password, name='change_password'),
     
     # Category endpoints (require authentication)
     path('categories/', views.CategoryListCreateView.as_view(), name='category_list_create'),

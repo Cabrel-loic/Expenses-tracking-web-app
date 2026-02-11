@@ -150,7 +150,7 @@ export default function ProfilePage() {
     } else {
       if (summary.total_income > 0) {
         if (savingsRatio >= 20) {
-          recommendations.push(`Great job — you're saving about ${savingsRatio.toFixed(0)}% of your income.`);
+          recommendations.push(`Great jobm you're saving about ${savingsRatio.toFixed(0)}% of your income.`);
         } else if (savingsRatio > 0) {
           recommendations.push(`You're saving ${savingsRatio.toFixed(0)}% of income. Consider aiming for at least 20% savings.`);
         } else {

@@ -60,6 +60,32 @@ def update_user_profile(request):
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
+@api_view(['POST'])
+@permission_classes([permissions.IsAuthenticated])
+def change_password(request):
+    """Change password for the authenticated user."""
+    from django.contrib.auth.password_validation import validate_password
+    from django.core.exceptions import ValidationError
+    current = request.data.get('current_password')
+    new_password = request.data.get('new_password')
+    new_password2 = request.data.get('new_password_confirm')
+    if not current:
+        return Response({'current_password': ['This field is required.']}, status=status.HTTP_400_BAD_REQUEST)
+    if not request.user.check_password(current):
+        return Response({'current_password': ['Current password is incorrect.']}, status=status.HTTP_400_BAD_REQUEST)
+    if not new_password:
+        return Response({'new_password': ['This field is required.']}, status=status.HTTP_400_BAD_REQUEST)
+    if new_password != new_password2:
+        return Response({'new_password_confirm': ['Passwords do not match.']}, status=status.HTTP_400_BAD_REQUEST)
+    try:
+        validate_password(new_password, request.user)
+    except ValidationError as e:
+        return Response({'new_password': list(e.messages)}, status=status.HTTP_400_BAD_REQUEST)
+    request.user.set_password(new_password)
+    request.user.save()
+    return Response({'message': 'Password updated successfully.'})
+
+
 # ==================== Category Views ====================
 
 class CategoryListCreateView(generics.ListCreateAPIView):
