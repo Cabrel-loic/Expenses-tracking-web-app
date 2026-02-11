@@ -1,5 +1,10 @@
 import axios, { AxiosError } from 'axios';
 
+const baseURL =
+  (typeof process.env.NEXT_PUBLIC_API_URL !== 'undefined'
+    ? process.env.NEXT_PUBLIC_API_URL
+    : 'http://localhost:8000/') + 'api/';
+
 const api = axios.create({
     baseURL: process.env.NEXT_PUBLIC_API_URL + "api/",
 });

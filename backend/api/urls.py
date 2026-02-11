@@ -11,7 +11,14 @@ urlpatterns = [
     path('auth/me/', views.get_user_profile, name='user_profile'),
     path('auth/me/update/', views.update_user_profile, name='update_user_profile'),
     
+    # Category endpoints (require authentication)
+    path('categories/', views.CategoryListCreateView.as_view(), name='category_list_create'),
+    path('categories/<uuid:id>/', views.CategoryRetrieveUpdateDestroyView.as_view(), name='category_detail'),
+    
     # Transaction endpoints (require authentication)
     path('transactions/', views.TransactionListCreateView.as_view(), name='transaction_list_create'),
     path('transactions/<uuid:id>/', views.TransactionRetrieveUpdateDestroyView.as_view(), name='transaction_detail'),
+
+    # Analytics (require authentication)
+    path('analytics/summary/', views.analytics_summary, name='analytics_summary'),
 ]

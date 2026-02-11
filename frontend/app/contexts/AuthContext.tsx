@@ -104,20 +104,30 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       toast.success('Registration successful! Please login.');
       return true;
     } catch (error: any) {
-      const errors = error.response?.data;
-      if (errors) {
-        // Handle field-specific errors
-        const errorMessages = Object.entries(errors)
+      const data = error.response?.data;
+      const status = error.response?.status;
+
+      if (data && typeof data === 'object' && !Array.isArray(data)) {
+        // DRF validation errors: { field: ["msg"] } or { field: "msg" }
+        const errorMessages = Object.entries(data)
           .map(([key, value]: [string, any]) => {
             if (Array.isArray(value)) {
               return `${key}: ${value.join(', ')}`;
             }
-            return `${key}: ${value}`;
+            return `${key}: ${String(value)}`;
           })
           .join('\n');
-        toast.error(errorMessages);
+        toast.error(errorMessages || 'Registration failed.');
+      } else if (data && typeof data === 'string') {
+        toast.error(data);
+      } else if (data?.detail) {
+        toast.error(Array.isArray(data.detail) ? data.detail.join(', ') : data.detail);
+      } else if (status === 500) {
+        toast.error('Server error. Please try again or contact support.');
+      } else if (error.code === 'ERR_NETWORK' || !error.response) {
+        toast.error('Cannot reach server. Check that the backend is running and CORS is allowed.');
       } else {
-        toast.error('Registration failed. Please try again.');
+        toast.error(`Registration failed (${status || 'error'}). Please try again.`);
       }
       return false;
     }
