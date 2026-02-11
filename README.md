@@ -6,9 +6,12 @@ A modern, full-stack expense tracking application built with Django REST Framewo
 
 This application provides a comprehensive solution for personal finance management, allowing users to:
 - Add and manage transactions (income and expenses)
+- Organize transactions with custom categories (color-coded with icons)
 - View real-time balance, income, and expense summaries
 - Monitor expense-to-revenue ratios with visual progress indicators
 - Track transaction history with detailed timestamps
+- Filter transactions by category for better analysis
+- Get category-wise expense breakdowns in analytics
 
 ## 🏗️ Tech Stack
 
@@ -110,7 +113,41 @@ npm run dev
 
 The application will be available at `http://localhost:3000`
 
-## 🔐 Authentication
+## �️ Database Models
+
+### User & Profile
+- **User**: Django's built-in User model (extended with profile)
+- **UserProfile**: One-to-one profile with avatar support
+
+### Category Model
+```python
+class Category(models.Model):
+    id = UUIDField (primary_key)
+    user = ForeignKey(User)  # User isolation
+    name = CharField(max_length=100)
+    color = CharField(max_length=7)  # Hex color codes
+    icon = CharField(max_length=50)  # Icon identifiers
+    description = TextField(blank=True, null=True)
+    is_default = BooleanField(default=False)
+    created_at = DateTimeField(auto_now_add=True)
+    updated_at = DateTimeField(auto_now=True)
+```
+
+### Transaction Model
+```python
+class Transaction(models.Model):
+    id = UUIDField (primary_key)
+    user = ForeignKey(User)  # User isolation
+    category = ForeignKey(Category, null=True, blank=True)
+    type = CharField(choices=[('income', 'Income'), ('expense', 'Expense')])
+    text = CharField(max_length=200)
+    amount = DecimalField(max_digits=10, decimal_places=2)
+    date = DateField(default=timezone.now)
+    created_at = DateTimeField(auto_now_add=True)
+    updated_at = DateTimeField(auto_now=True)
+```
+
+## �� Authentication
 
 This application uses **JWT (JSON Web Tokens)** for secure authentication. All transaction endpoints require authentication, and users can only access their own data.
 
@@ -149,6 +186,16 @@ This application uses **JWT (JSON Web Tokens)** for secure authentication. All t
 - `PUT /api/transactions/<id>/` - Update transaction (requires auth)
 - `DELETE /api/transactions/<id>/` - Delete transaction (requires auth)
 
+#### Protected Category Endpoints
+- `GET /api/categories/` - List user's categories (requires auth)
+- `POST /api/categories/` - Create category (requires auth)
+- `GET /api/categories/<id>/` - Get category details (requires auth)
+- `PUT /api/categories/<id>/` - Update category (requires auth)
+- `DELETE /api/categories/<id>/` - Delete category (requires auth, prevents deletion if category has transactions)
+
+#### Analytics Endpoints
+- `GET /api/analytics/summary/` - Get comprehensive analytics including category-wise expense breakdown (requires auth)
+
 ### Security Features
 
 - ✅ JWT token-based authentication
@@ -173,11 +220,29 @@ For detailed authentication setup and API documentation, see:
 - User profile management
 - Secure logout functionality
 
+✅ **Transaction Management**
+- Add, edit, and delete transactions
+- Transaction type support (Income/Expense)
+- Real-time balance calculation
+- Transaction history with timestamps
+- Advanced filtering and search capabilities
+
+✅ **Categories System**
+- Create, edit, and delete custom categories
+- Color-coded categories with hex color support
+- Icon support for visual category identification
+- Category assignment to transactions
+- Filter transactions by category
+- Category-wise expense analytics
+- User-specific category isolation
+- Prevention of category deletion with existing transactions
+
 ✅ **Financial Overview**
 - Current balance calculation
 - Total income tracking
 - Total expenses tracking
 - Expense-to-revenue ratio visualization
+- Category-based expense breakdown in analytics
 
 ## 🔍 Competitive Analysis: Top Expense Tracking Applications
 
@@ -261,29 +326,42 @@ For detailed authentication setup and API documentation, see:
 
 ### Phase 1: Core Functionality Improvements (High Priority)
 
-#### 1. **Transaction Categories**
+#### 1. **Transaction Categories** ✅ **COMPLETED**
 **Why:** Essential for meaningful expense analysis and budgeting.
 
 **Implementation:**
-- **Backend:**
+- **Backend:** ✅
   ```python
-  # Add to models.py
+  # Category model with full functionality
   class Category(models.Model):
+      id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+      user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='categories')
       name = models.CharField(max_length=100)
-      color = models.CharField(max_length=7, default="#3B82F6")
-      icon = models.CharField(max_length=50, default="tag")
+      color = models.CharField(max_length=7, default="#3B82F6")  # Hex color
+      icon = models.CharField(max_length=50, default="tag")       # Icon identifier
+      description = models.TextField(max_length=500, blank=True, null=True)
+      is_default = models.BooleanField(default=False)
+      created_at = models.DateTimeField(auto_now_add=True)
+      updated_at = models.DateTimeField(auto_now=True)
       
   class Transaction(models.Model):
       # ... existing fields
       category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True)
   ```
-- **Frontend:**
-  - Add category dropdown/selector in transaction form
-  - Display category badges in transaction list
-  - Filter transactions by category
-  - Category-based expense breakdown
+  - Full CRUD API endpoints for categories
+  - User-specific category isolation
+  - Category validation and constraints
+  - Transaction-category relationship management
+- **Frontend:** ✅
+  - Category dropdown selector in transaction form
+  - Category badges displayed in transaction list with custom colors
+  - Category filtering functionality
+  - Real-time category management
+  - Color-coded category visualization
 
-**Estimated Time:** 4-6 hours
+**Status:** Fully implemented and working
+
+**Estimated Time:** 4-6 hours (Actual: Completed)
 
 #### 2. **User Authentication & Multi-User Support** ✅ **COMPLETED**
 **Why:** Currently all transactions are shared. Users need personal accounts.
@@ -551,10 +629,10 @@ For detailed authentication setup and API documentation, see:
 
 ## 📋 Implementation Roadmap
 
-### Week 1-2: Foundation
+### Week 1-2: Foundation ✅
 1. ✅ User authentication (COMPLETED)
-2. Transaction types
-3. Categories
+2. ✅ Transaction types (COMPLETED)
+3. ✅ Categories (COMPLETED)
 
 ### Week 3-4: Core Features
 4. Date filtering
